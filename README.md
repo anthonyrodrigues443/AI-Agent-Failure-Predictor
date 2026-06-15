@@ -105,4 +105,36 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 3. A learned score beats the rule everywhere and gives operators a tunable dial.
 4. The achievable ceiling is honest (~0.77 ROC) because ~24% of failures are telemetry-light.
 
+---
+
+## Iteration Summary
+
+### Phase 1: Domain Research + Dataset + EDA + Baselines — 2026-06-15
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was tested:** Built a causal, literature-calibrated simulator of 20,000 agent runs and tested whether the industry-standard `context_usage > 80%` alert actually predicts failure — measured against 3 baselines ranked by AUPRC. The deployed rule catches only **15% of failures**; a balanced LogReg lifts AUPRC **+24%** (0.48 → 0.60).<br><br>
+**What worked best:** Balanced **Logistic Regression** (AUPRC 0.599) — it dominates the context rule everywhere on the PR curve and, unlike the rule's single fixed point, is a *tunable dial* (68% recall achievable at its default threshold).
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/phase1_risk_drivers.png" width="220">
+
+</td>
+<td valign="top" width="38%">
+
+**Key Insight:** **84% of all failures occur while context utilization is below 80%** — retry/cascade failures fail at a *mean context of just 0.30*, long before the dashboard alarm fires. Context is a symptom, not the cause.<br><br>
+**Surprise:** The first two generator drafts *leaked* (perfect LogReg, AUPRC 1.000) because successes terminated early while only failures accumulated telemetry — a structural confound that required redesigning the outcome model (noisy, latent-driven) to produce realistic class overlap.<br><br>
+**Research:** MAST taxonomy (*Why Do Multi-Agent LLM Systems Fail?*, 2025) — failures split Specification 41.8% / Coordination 36.9% / Verification 21.3%, so we tested context saturation as a *minority* cause; TRAIL (Patronus, arXiv:2505.08638) — real failure-trace sets are small & localization-shaped, so we simulated.<br><br>
+**Best Model So Far:** B3 Logistic Regression (balanced) — **AUPRC 0.599**, ROC-AUC 0.773.
+
+</td>
+</tr>
+</table>
+
+---
+
 *Reference quality bar: the Keeper Attractiveness Research (956 raters, 50+ models, 17 phases).*
