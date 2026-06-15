@@ -1,0 +1,17 @@
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.4
+matplotlib>=3.8
+seaborn>=0.13
+pyyaml>=6.0
+joblib>=1.3
+pyarrow>=14.0          # parquet engine for data/processed/agent_runs.parquet
+
+# Phase 2+ (tree ensembles)
+xgboost>=2.0
+lightgbm>=4.1
+catboost>=1.2
+# Phase 6+ (explainability / app / api) — installed later
+shap>=0.44
+streamlit>=1.30
