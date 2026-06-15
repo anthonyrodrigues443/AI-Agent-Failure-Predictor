@@ -1,0 +1,61 @@
+{
+  "phase1": {
+    "date": "2026-06-15",
+    "dataset": {
+      "rows": 20000,
+      "numeric_features": 20,
+      "categorical_features": 2,
+      "failure_rate": 0.2601,
+      "n_failures": 5202,
+      "n_success": 14798,
+      "missing_values": 0,
+      "duplicate_rows": 0
+    },
+    "primary_metric": "auprc",
+    "operating_metric": "recall_at_precision_0.80",
+    "headline_pct_failures_below_ctx80": 0.8404,
+    "baselines": {
+      "B1_majority": {
+        "auprc": 0.26,
+        "roc_auc": 0.5,
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "accuracy": 0.74,
+        "recall_at_p80": 0.0,
+        "threshold_at_p80": null,
+        "n": 5000
+      },
+      "B2_context_gt_0.80": {
+        "auprc": 0.4824956948667033,
+        "roc_auc": 0.644329002079002,
+        "f1": 0.25768476128188356,
+        "precision": 0.8602620087336245,
+        "recall": 0.15153846153846154,
+        "accuracy": 0.773,
+        "recall_at_p80": 0.17153846153846153,
+        "threshold_at_p80": 0.7424122403513723,
+        "n": 5000
+      },
+      "B3_logreg_balanced": {
+        "auprc": 0.5986965080264776,
+        "roc_auc": 0.7725311850311851,
+        "f1": 0.5478855721393034,
+        "precision": 0.45981210855949894,
+        "recall": 0.6776923076923077,
+        "accuracy": 0.7092,
+        "recall_at_p80": 0.19692307692307692,
+        "threshold_at_p80": 0.8453212956054976,
+        "n": 5000
+      }
+    },
+    "top_features_auc": {
+      "error_rate_per_step": 0.7336,
+      "tool_error_rate": 0.7301,
+      "max_consecutive_retries": 0.7065,
+      "tool_error_count": 0.6935,
+      "num_retries": 0.682,
+      "context_growth_rate": 0.6687
+    }
+  }
+}
