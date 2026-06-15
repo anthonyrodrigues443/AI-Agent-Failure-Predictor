@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- project data & model artifacts (regenerable; do not commit) ---
+data/processed/
+data/raw/
+*.parquet
+models/*.joblib
+models/*.pkl
+models/*.pt
+models/*.onnx
+# keep small tracked files
+!data/README.md
+!models/.gitkeep
+!models/model_card.md

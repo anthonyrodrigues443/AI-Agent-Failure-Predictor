@@ -1,0 +1,50 @@
+# AI-Agent-Failure-Predictor — global config
+project: AI-Agent-Failure-Predictor
+seed: 42
+
+data:
+  n_runs: 20000
+  failure_target_rate: 0.26        # calibrated to literature (see data/README.md)
+  out_path: data/processed/agent_runs.parquet
+  test_size: 0.25
+  stratify: true
+
+# Telemetry features observed per agent run (NO failure_reason — that would leak).
+features:
+  numeric:
+    - num_steps
+    - context_max_pct
+    - context_mean_pct
+    - context_growth_rate
+    - max_tool_depth
+    - num_tool_calls
+    - tool_error_count
+    - tool_error_rate
+    - num_retries
+    - max_consecutive_retries
+    - error_count_subtotal
+    - reasoning_loop_count
+    - tool_calls_per_step
+    - error_rate_per_step
+    - tokens_per_step_mean
+    - tokens_per_step_growth
+    - mean_step_latency_ms
+    - distinct_tools_used
+    - temperature
+    - prompt_tokens
+  categorical:
+    - task_type
+    - model_tier
+  target: failure
+
+# Primary metric: AUPRC (imbalanced, positive = failure). Operating metric:
+# Recall at Precision=0.80 (catch failures without drowning ops in false alarms).
+metrics:
+  primary: average_precision      # AUPRC
+  operating_precision: 0.80
+  secondary: [roc_auc, f1, precision, recall]
+
+paths:
+  results: results
+  reports: reports
+  models: models
