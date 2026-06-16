@@ -229,3 +229,11 @@ models/*.onnx
 !data/README.md
 !models/.gitkeep
 !models/model_card.md
+
+# CatBoost auto-generated training logs
+catboost_info/
+**/catboost_info/
+
+# macOS
+.DS_Store
+**/.DS_Store
