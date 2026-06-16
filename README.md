@@ -5,7 +5,7 @@
 > structurally blind to **84% of failures**.
 
 **Domain:** AI Infra / Agent Observability · **Type:** imbalanced binary classification
-(positive = failure, ~26% prevalence) · **Status:** Phase 1 of 7 complete (2026-06-15).
+(positive = failure, ~26% prevalence) · **Status:** Phase 2 of 7 complete (2026-06-16) — 7-model head-to-head; champion **HistGBM** AUPRC 0.6175 (+0.019 over the LogReg floor, win is calibration).
 
 ---
 
@@ -93,8 +93,9 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 
 ## Roadmap
 - **Phase 1 ✅** dataset, EDA, leakage checks, 3 baselines (this).
-- **Phase 2** RandomForest / XGBoost / LightGBM / CatBoost / GradientBoosting vs the LogReg floor —
-  hypothesis: trees win via the *context × tool-depth* and *retry × cascade* interactions.
+- **Phase 2 ✅** RandomForest / XGBoost / LightGBM / CatBoost / Hist-GBM / ExtraTrees vs the LogReg floor.
+  Hypothesis (trees win on the interactions) was *half-wrong*: best tree is only +0.019 AUPRC over a
+  1-line LogReg, LightGBM loses to the floor — the win is **calibration**, not ranking.
 - **Phase 3** feature engineering (leading indicators: growth rates, sliding windows).
 - **Phase 4** tuning + error analysis. **Phase 5** advanced + ablation + **frontier-LLM head-to-head**.
 - **Phase 6** explainability (SHAP). **Phase 7** production pipeline + Streamlit dashboard.
@@ -104,6 +105,9 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 2. Failures are tool-driven (retry + cascade + exogenous ≈ 85%), not context-driven (12.5%).
 3. A learned score beats the rule everywhere and gives operators a tunable dial.
 4. The achievable ceiling is honest (~0.77 ROC) because ~24% of failures are telemetry-light.
+5. Across 7 models / 3 paradigms, **model class barely matters** — the best tree (HistGBM) beats a
+   1-line LogReg by just +0.019 AUPRC and LightGBM loses to it; the real differentiator is
+   **calibration** (Brier 0.148 vs 0.190), which lifts Recall@P=0.80 +29% rel.
 
 ---
 
@@ -130,6 +134,32 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 **Surprise:** The first two generator drafts *leaked* (perfect LogReg, AUPRC 1.000) because successes terminated early while only failures accumulated telemetry — a structural confound that required redesigning the outcome model (noisy, latent-driven) to produce realistic class overlap.<br><br>
 **Research:** MAST taxonomy (*Why Do Multi-Agent LLM Systems Fail?*, 2025) — failures split Specification 41.8% / Coordination 36.9% / Verification 21.3%, so we tested context saturation as a *minority* cause; TRAIL (Patronus, arXiv:2505.08638) — real failure-trace sets are small & localization-shaped, so we simulated.<br><br>
 **Best Model So Far:** B3 Logistic Regression (balanced) — **AUPRC 0.599**, ROC-AUC 0.773.
+
+</td>
+</tr>
+</table>
+
+### Phase 2: Multi-Model Head-to-Head — 2026-06-16
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was tested:** 7 models across 3 paradigms (boosting / bagging / linear), 5-fold CV + held-out test, all ranked on AUPRC, vs the Phase-1 LogReg floor (0.599) — does boosting crush it as the Phase-1 "0.68 probe" suggested? Result: the best tree (**HistGBM**) reaches **0.6175, only +0.019 over a 1-line LogReg**, and all 7 bunch in a **0.022 AUPRC band** with near-superimposed PR curves.<br><br>
+**What worked best:** **HistGBM** — but it earns the crown on **calibration**, not ranking: Brier **0.148** vs LogReg's 0.190, lifting **Recall@P=0.80 from 0.197 → 0.255 (+29% rel)**. It's the only model that's both top-ranked *and* honestly thresholdable.
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/phase2_model_comparison.png" width="220">
+
+</td>
+<td valign="top" width="38%">
+
+**Key Insight:** **Model class barely matters — the bottleneck is signal, not the algorithm.** The ~0.62 AUPRC / ~0.78 ROC ceiling is set by *irreducible latent factors* baked into the generator (latent difficulty−competence, Bernoulli noise, ~24% telemetry-light failures), not the model family.<br><br>
+**Surprise:** "Boosting > bagging > linear" is **false** here — boosting holds both #1 (HistGBM) *and* #7 (LightGBM, which loses to the linear floor); a bagging model (ExtraTrees) outranks three boosters. The Phase-1 0.68 probe did not replicate under honest evaluation.<br><br>
+**Research:** Springer 2025 (20 models / 111 datasets) & TALENT (300+ datasets) — GBDTs match-or-beat deep nets on tabular, so we ran a 7-model lineup; "top" turned out to mean +0.02, not a landslide. *Canonical Path Deviation as a Causal Mechanism of Agent Failure* (arXiv 2602.19008) — frames cascade/drift as the causal mechanism, motivating the interaction probe (LogReg + 2 interactions recovers 42% of the gap).<br><br>
+**Best Model So Far:** **HistGBM** (boosting) — AUPRC **0.6175**, ROC-AUC 0.782, Brier **0.148**, Recall@P=0.80 **0.255**.
 
 </td>
 </tr>
