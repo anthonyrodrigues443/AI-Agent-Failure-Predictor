@@ -85,6 +85,12 @@ class _RunAgg:
     ctx_pct_trace: list = field(default_factory=list)
     tokens_per_step: list = field(default_factory=list)
     latency_trace: list = field(default_factory=list)
+    # Per-step event traces (Phase 3). Recording these consumes NO rng draws, so the
+    # aggregate columns produced by generate_dataset() are byte-identical with/without them.
+    step_tool_trace: list = field(default_factory=list)   # 1 if this step issued a tool call
+    step_err_trace: list = field(default_factory=list)     # 1 if this step had any error
+    step_retry_trace: list = field(default_factory=list)   # # retries fired this step
+    step_loop_trace: list = field(default_factory=list)    # 1 if a reasoning loop fired
     failure: int = 0
     failure_reason: str = "none"
 
@@ -122,8 +128,10 @@ def _simulate_run(rng: np.random.Generator) -> _RunAgg:
         ctx_pct = min(context_tokens / ctx_budget, 1.0)
         ctx_pressure = _sigmoid((ctx_pct - 0.72) / 0.08)
         step_tokens = float(rng.lognormal(5.4, 0.45))
+        s_tool = s_err = s_retry = s_loop = 0   # per-step event flags (Phase 3 traces)
 
         if rng.random() < tp["tool_intensity"]:
+            s_tool = 1
             agg.num_tool_calls += 1
             depth = 1 + rng.poisson(tp["chain_lambda"] * (1.0 + 0.8 * cascade))
             agg.max_tool_depth = max(agg.max_tool_depth, depth)
@@ -133,8 +141,10 @@ def _simulate_run(rng: np.random.Generator) -> _RunAgg:
                 (1.0 - competence) + 0.07 * (depth - 1) + 0.55 * cascade
                 + 0.30 * ctx_pressure - 0.06, 0.01, 0.97)
             if rng.random() < p_tool_fail:
+                s_err = 1
                 agg.tool_error_count += 1
                 n_retry = int(min(rng.poisson(0.6 + 1.4 * (1.0 - plan_skill)), 4))
+                s_retry = n_retry
                 agg.num_retries += n_retry
                 consecutive_retries += 1
                 agg.max_consecutive_retries = max(agg.max_consecutive_retries, consecutive_retries)
@@ -147,8 +157,10 @@ def _simulate_run(rng: np.random.Generator) -> _RunAgg:
             p_reason_err = np.clip(
                 (1.0 - competence) * 0.6 + 0.50 * cascade + 0.40 * ctx_pressure - 0.04, 0.01, 0.95)
             if rng.random() < p_reason_err:
+                s_err = 1
                 agg.error_count_subtotal += 1
                 if rng.random() < (0.25 + 0.45 * ctx_pressure + 0.30 * cascade):
+                    s_loop = 1
                     agg.reasoning_loop_count += 1
                 cascade = min(cascade + 0.02, 0.9)
             else:
@@ -158,6 +170,10 @@ def _simulate_run(rng: np.random.Generator) -> _RunAgg:
         agg.ctx_pct_trace.append(min(context_tokens / ctx_budget, 1.0))
         agg.tokens_per_step.append(step_tokens)
         agg.latency_trace.append(base_latency + 0.04 * step_tokens + rng.normal(0, 90))
+        agg.step_tool_trace.append(s_tool)
+        agg.step_err_trace.append(s_err)
+        agg.step_retry_trace.append(s_retry)
+        agg.step_loop_trace.append(s_loop)
 
         if step >= exo_step:
             agg.failure, agg.failure_reason, died_exo = 1, "early_exogenous", True
@@ -235,6 +251,26 @@ def generate_dataset(n_runs: int = 20000, seed: int = 42) -> pd.DataFrame:
     """Simulate `n_runs` agent runs and return a run-level telemetry DataFrame."""
     rng = np.random.default_rng(seed)
     return pd.DataFrame([_aggregate(_simulate_run(rng)) for _ in range(n_runs)])
+
+
+def generate_traces(n_runs: int = 20000, seed: int = 42) -> pd.DataFrame:
+    """Same runs as `generate_dataset` (identical rng order -> identical aggregates) but with
+    the per-step event traces attached as list-columns, for Phase-3 leading-indicator feature
+    engineering. The aggregate columns are guaranteed to match the committed parquet exactly."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for _ in range(n_runs):
+        agg = _simulate_run(rng)
+        row = _aggregate(agg)
+        row["trace_ctx_pct"] = list(agg.ctx_pct_trace)
+        row["trace_tokens"] = list(agg.tokens_per_step)
+        row["trace_latency"] = list(agg.latency_trace)
+        row["trace_tool"] = list(agg.step_tool_trace)
+        row["trace_err"] = list(agg.step_err_trace)
+        row["trace_retry"] = list(agg.step_retry_trace)
+        row["trace_loop"] = list(agg.step_loop_trace)
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def build_and_save(n_runs: int = 20000, seed: int = 42,
