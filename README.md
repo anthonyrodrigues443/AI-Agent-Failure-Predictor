@@ -5,7 +5,7 @@
 > structurally blind to **84% of failures**.
 
 **Domain:** AI Infra / Agent Observability · **Type:** imbalanced binary classification
-(positive = failure, ~26% prevalence) · **Status:** Phase 3 of 7 complete (2026-06-17) — engineered leading-indicator features; the ~0.62 AUPRC ceiling is **signal-bound** (best lift +0.003), and **78% of the full-run signal is available at step 3** of a ~11-step run.
+(positive = failure, ~26% prevalence) · **Status:** Phase 4 of 7 complete (2026-06-18) — Optuna tuning + calibration + error analysis. Tuning lifts AUPRC by **+0.003** (champion CatBoost tuned, **0.6237**) — the ~0.62 ceiling holds from a fourth angle. The deployable wins are an honest frozen threshold and a clean split of the residual error into a *recoverable* precision-tradeoff band vs a small *irreducible* telemetry-light core (`latent_capability` is uncatchable at any threshold).
 
 ---
 
@@ -99,7 +99,10 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 - **Phase 3 ✅** leading-indicator feature engineering (trajectory rate/EWS/latency-tail + early-window).
   The ~0.62 ceiling is *signal-bound* (best lift +0.003); the signal lives in the **trajectory** (rate-only
   recovers 94%), and **failure is visible by step 3** (78% of full-run AUPRC).
-- **Phase 4** tuning + error analysis. **Phase 5** advanced + ablation + **frontier-LLM head-to-head**.
+- **Phase 4 ✅** Optuna tuning + calibration + error analysis. Tuning adds only +0.003 AUPRC (ceiling holds
+  from a 4th angle); the deployable wins are an **honest frozen threshold** and the finding that the miss is
+  two parts — a recoverable precision-tradeoff band and a small *irreducible* telemetry-light core.
+- **Phase 5** advanced + ablation + **frontier-LLM head-to-head**.
 - **Phase 6** explainability (SHAP). **Phase 7** production pipeline + Streamlit dashboard.
 
 ## Key findings so far
@@ -194,6 +197,33 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 **Surprise:** the explicit interaction `ix_retry_casc` is the single strongest feature in the whole pool (univariate AUC 0.739) — above the best raw feature — yet adds ~0 to gradient-boosted trees. And a borrowed-from-ecology **early-warning signal** (lag-1 autocorrelation of the error trace, "critical slowing down") lands in the top-10 by permutation importance.<br><br>
 **Research:** EWS theory (Scheffer; EWSNet) for variance/autocorrelation precursors; time-series→tabular FE (arXiv 2303.16117) for velocity/acceleration features; 2025-26 LLM-observability practice (latency-tail creep, retry-exhaustion) for the leading indicators to engineer.<br><br>
 **Best Model So Far:** **CatBoost + ALL** — AUPRC **0.6208**; HistGBM remains the best operating point (Recall@P=0.80 **0.255**). Both go into Phase-4 tuning.
+
+</td>
+</tr>
+</table>
+
+### Phase 4: Hyperparameter Optimization, Calibration & Error Analysis — 2026-06-18
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was tested:** Does Optuna (TPE) break the ~0.62 ceiling, and what is actually *deployable* once it's conceded? Tuned both contenders on `+ALL` over research-informed ranges, selecting on **train-only CV** (no test leakage), then scored once on test; calibrated the champion; froze the operating threshold on held-out data; and ran a full error analysis.<br><br>
+**What worked best:** **CatBoost tuned** is the new project-best at **0.6237** — but that is only **+0.003** over its own default and +0.007 over the Phase-2 incumbent. TPE independently walked toward *strong regularization* (depth 4, lr 0.025), re-deriving the "simpler is better here" lesson. The ceiling holds from a fourth angle.
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/phase4_recall_by_reason.png" width="250">
+<br><img src="results/phase4_optuna_history.png" width="250">
+
+</td>
+<td valign="top" width="38%">
+
+**Key Insight:** The residual error is **two distinct things**. (1) A large *recoverable* band — at the high-precision operating point the model catches only the *loud* failures (`context_overflow` 97%) and misses the quiet ones (`stuck_retry_loop`, 48% of failures, recall 0.15), but dropping the threshold recovers them (0.15→0.26). (2) A small *irreducible* core — `latent_capability` is caught **0% at any threshold**. Only the second is the 0.62 ceiling.<br><br>
+**Surprise / correction:** my going-in hypothesis (misses = telemetry-light *reasons*) was wrong — misses are governed by telemetry **magnitude**: false negatives are statistically indistinguishable from successes on every signal (retries 1.6 vs 4.6 for caught). The blind spot is the **frontier-model** (recall 5%) / low-tool-intensity (`multi_hop_qa` 1%) regime — rare, surprising, quiet failures. Also: calibrating the *tuned* tree is a **no-op** (raw Brier 0.147 already best) — counter to the reflex.<br><br>
+**Research:** Optuna/TPE diminishing-returns practice; scikit-learn calibration guide + imbalanced-calibration (sigmoid vs isotonic); precision-recall threshold selection on held-out data.<br><br>
+**Best Model So Far:** **CatBoost tuned + ALL** — AUPRC **0.6237**, Brier 0.147; honest deployable point **P=0.785 / R=0.267** at a frozen threshold. Goes into the Phase-5 LLM head-to-head.
 
 </td>
 </tr>

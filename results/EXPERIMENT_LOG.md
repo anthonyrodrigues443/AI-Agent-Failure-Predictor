@@ -77,3 +77,43 @@ Probes:
 
 Cached `results/phase3_best_test_proba.npy` (CatBoost+ALL) on the same test idx for the Phase-5 LLM
 head-to-head. Two contenders go into Phase-4 tuning: CatBoost+ALL and HistGBM.
+
+## Phase 4 — Optuna Tuning + Calibration + Error Analysis (2026-06-18)
+
+Tuned both contenders on `+ALL` with TPE over research-informed ranges, **selecting on train-only CV**
+(no test leakage), scored once on the identical held-out test. Then calibrated the champion, froze the
+operating threshold on held-out (OOF) data, gave the early-window model a deployable operating point, and
+ran a full error analysis.
+
+**Headline: Optuna does not break the ceiling (+0.0029 test AUPRC) — confirmed from a 4th angle — and the
+residual error splits into a recoverable precision-tradeoff band and a small irreducible telemetry-light core.**
+
+Tuned vs default on test (ranked on AUPRC):
+| Model | test AUPRC | ROC-AUC | Brier | R@P80 | Δ vs its default |
+|---|--:|--:|--:|--:|--:|
+| **CatBoost tuned** (champion) | **0.6237** | 0.7842 | 0.1471 | 0.254 | **+0.0029** |
+| CatBoost default | 0.6208 | 0.7807 | 0.1481 | 0.249 | — |
+| HistGBM tuned | 0.6198 | 0.7837 | 0.1475 | 0.241 | +0.0030 |
+| HistGBM default | 0.6169 | 0.7802 | 0.1483 | 0.245 | — |
+
+CV gain (HistGBM 0.631→0.638, CatBoost 0.624→0.637) was +0.007–0.013 but **did not transfer** to test —
+fold-overfit in the noise band. TPE chose strong regularization (CatBoost depth 4, lr 0.025; HistGBM 13
+leaf nodes, lr 0.013), re-deriving Phases 2-3's "simpler is better on low-signal telemetry".
+
+Probes:
+- **Calibration is a no-op on the tuned tree:** raw Brier **0.1471** (best), sigmoid 0.1484, isotonic 0.1472;
+  AUPRC flat (monotone maps). Refines Phase 2 — the regularized booster is already calibrated; "always
+  calibrate" is the wrong reflex (we ship the sigmoid wrapper only for a stable operating point).
+- **Honest operating point:** frozen-on-OOF threshold (0.632) lands at **P=0.785 / R=0.267** on test vs the
+  in-sample-optimal P=0.800 / R=0.249. The optimism is a **precision shortfall (~1.5 pt), not a recall drop**.
+- **Early-window (sigmoid-calibrated):** at k=3 → R@P60 0.265 / R@P80 0.065; k=10 → 0.404 / 0.165. Failure is
+  rankable at step 3 but a high-precision early alarm costs recall — alarm at P≈0.60 early, tighten later.
+- **Error analysis:** recall by reason at the deployable point — context_overflow 0.97, cascade 0.41,
+  stuck_retry_loop 0.15 (48% of failures!), early_exogenous 0.13, latent_capability 0.00. FN telemetry ≈
+  successes on every signal (retries 1.6 vs 4.6 for caught). At thr 0.5 the retry/cascade/exogenous misses
+  recover (0.15→0.26, 0.41→0.52, 0.13→0.19) but `latent_capability` stays **0.00** — the irreducible core.
+  Subgroup blind spot: frontier models recall 0.05, multi_hop_qa 0.01 — the quiet/high-capability regime.
+
+Champion artifact `models/phase4_champion.joblib` (sigmoid-calibrated tuned CatBoost + frozen threshold +
+feature list); `results/phase4_champion_test_proba.npy` cached on the same test idx for the Phase-5 LLM
+head-to-head.
