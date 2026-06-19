@@ -117,3 +117,64 @@ Probes:
 Champion artifact `models/phase4_champion.joblib` (sigmoid-calibrated tuned CatBoost + frozen threshold +
 feature list); `results/phase4_champion_test_proba.npy` cached on the same test idx for the Phase-5 LLM
 head-to-head.
+
+## Phase 5 — Advanced Techniques, Ablation & Frontier-LLM Head-to-Head (2026-06-19)
+
+Five stress-tests of the Phase-4 champion (sigmoid-calibrated, Optuna-tuned **CatBoost on `+ALL` 49f**;
+test AUPRC 0.624, Brier 0.147), all on the identical Phase-2 split; champion retrained from persisted
+best-params so the notebook is self-contained.
+
+**Headline 1 — SMOTE/ADASYN are the wrong reflex here; nothing beat the calibrated champion.**
+
+Imbalance ablation (resampling inside each CV fold via `imblearn` pipelines; ranked on 5-fold CV AUPRC):
+| Method | CV AUPRC | Δ vs champ | test AUPRC | Brier | Prec@0.5 |
+|---|--:|--:|--:|--:|--:|
+| **None (champion)** | **0.6362** | **0** | **0.6237** | **0.1471** | **0.698** |
+| Cost-sensitive (class-weight) | 0.6346 | −0.0016 | 0.6216 | 0.1808 | 0.491 |
+| RandomUnderSample | 0.6319 | −0.0043 | 0.6194 | 0.1842 | 0.479 |
+| SMOTE | 0.6251 | −0.0110 | 0.6112 | 0.1520 | 0.623 |
+| SMOTE+Tomek | 0.6250 | −0.0112 | 0.6094 | 0.1522 | 0.635 |
+| BorderlineSMOTE | 0.6244 | −0.0117 | 0.6089 | 0.1526 | 0.617 |
+| ADASYN | 0.6233 | −0.0129 | 0.6079 | 0.1530 | 0.618 |
+
+Synthetic oversampling lowers *ranking* (−0.011 to −0.013, interpolating into the class-overlap the
+generator bakes in); reweighting/undersampling holds AUPRC but **wrecks calibration** (Brier 0.18 vs
+0.147) and halves precision. The shipped recipe (calibrated model + business threshold) dominates.
+
+**Headline 2 — the ~0.62 ceiling holds a 5th time (ensembling).** Leak-free OOF stack of CatBoost +
+HistGBM + ExtraTrees + LogReg → champion 0.6237 vs stacked 0.6215 vs mean 0.6205. Base-proba
+correlations all ≥0.92 → nothing for a meta-learner to combine. (Generator → model class → features →
+Optuna → ensembling all land at ~0.62.)
+
+**Headline 3 — group ablation: the Error/Retry/Loop family is load-bearing.**
+| Dropped family | ΔAUPRC | | Dropped family | ΔAUPRC |
+|---|--:|---|---|--:|
+| **Error/Retry/Loop (18)** | **−0.0222** | | ALL engineered (LEAD+DOM, 23) | −0.0019 |
+| Meta/Run-shape (9) | −0.0175 | | Tool/Depth (5) | +0.0007 |
+| Context (9) | −0.0034 | | Tokens/Latency (8) | +0.0018 |
+
+Error/Retry carries 6× the next family; the 23-feature engineered block costs −0.0019 to drop (trees
+reconstruct the interactions — Phase 3). New nuance: Meta/Run-shape is 2nd because `model_tier` is the
+only observable proxy for the latent capability gap behind the irreducible failures.
+
+**Headline 4 — a 1 MB calibrated tree out-ranks Claude Opus & Haiku at failure prediction.**
+Same 50-run stratified sample (25/25), zero-shot via CLI; raw telemetry only:
+| Model | n | Acc | F1 | Prec | Rec | AUPRC | Latency/run | Cost/1k |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| **Champion CatBoost** | 50 | 0.640 | 0.438 | **1.000** | 0.280 | **0.833** | **70 µs** | **$0.0001** |
+| Claude Opus (0-shot) | 50 | 0.520 | 0.667 | 0.511 | 0.96 | 0.738 | 10.3 s | $4.50 |
+| Claude Haiku (0-shot) | 50 | 0.640 | 0.719 | 0.590 | 0.92 | 0.709 | 23.9 s | $0.30 |
+| Codex GPT-5.4 (0-shot) | 11* | 0.727 | 0.800 | 0.857 | 0.75 | 0.899* | 100 s | $50 |
+
+\* Codex completed 11/50 (≈100 s/call agentic overhead) — reported, not comparable. The tree out-ranks
+both Claude models on equal n (AUPRC 0.833 vs 0.738/0.709) at **~147,000× / 341,000× the speed** and
+**45,000× / 3,000× the cost**. The LLMs cry wolf (recall 0.92–0.96, precision 0.51–0.59); the tree is
+calibrated. LLM latency includes CLI/agent overhead; cost math + the tree's 70 µs are genuine.
+
+**Headline 5 — model + LLM beat either alone (exploratory, n=50).** Routing the champion's borderline
+band (±0.15, 9/50) to high-recall Opus: hybrid acc **0.72** vs champion 0.64 vs Opus 0.52. Caveat: the
+balanced sample flatters Opus's recall; re-validate at the real 26% prevalence before shipping.
+
+Artifacts: `phase5_imbalance_ablation.{csv,png}`, `phase5_stacking.{csv,png}`,
+`phase5_group_ablation.{csv,png}`, `phase5_llm_vs_custom.{csv,png}`, `metrics.json[phase5]`,
+`phase5_llm_cache/` (Opus/Haiku 50, Codex 11). Harness: `src/llm_eval.py`.

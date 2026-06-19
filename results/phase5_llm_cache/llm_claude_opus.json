@@ -1,0 +1,502 @@
+[
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2306,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.15,
+  "latency_s": 12.85,
+  "raw": "FAIL\n0.15"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1023,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 10.36,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4823,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 12.98,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2281,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 16.04,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3897,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 19.94,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3328,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.62,
+  "latency_s": 15.65,
+  "raw": "FAIL\n0.62"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 938,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.72,
+  "latency_s": 12.84,
+  "raw": "FAIL\n0.72"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4012,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.74,
+  "latency_s": 10.14,
+  "raw": "FAIL\n0.74"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2369,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 7.75,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2681,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.32,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3549,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.54,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4250,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.6,
+  "latency_s": 8.81,
+  "raw": "FAIL\n0.6"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1778,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 12.12,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2667,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 10.0,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3668,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.78,
+  "latency_s": 10.04,
+  "raw": "FAIL\n0.78"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 635,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 7.35,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 956,
+  "true_label": 0,
+  "pred_label": 0,
+  "pred_prob": 0.08,
+  "latency_s": 10.57,
+  "raw": "PASS\n0.08"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1812,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 10.86,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4644,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.62,
+  "latency_s": 10.68,
+  "raw": "FAIL\n0.62"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2738,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.82,
+  "latency_s": 9.62,
+  "raw": "FAIL\n0.82"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1600,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 15.67,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1794,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.37,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 428,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.62,
+  "latency_s": 11.36,
+  "raw": "FAIL\n0.62"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 209,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.15,
+  "latency_s": 11.31,
+  "raw": "FAIL\n0.15"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3760,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.62,
+  "latency_s": 12.18,
+  "raw": "FAIL\n0.62"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4578,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.67,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2270,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.56,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2258,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 6.06,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2605,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.28,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3674,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.97,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3366,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.95,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3734,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.09,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 371,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.88,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3869,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 5.81,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 439,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.72,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3831,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 5.26,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 695,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.5,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3664,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 6.05,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4830,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.79,
+  "latency_s": 13.27,
+  "raw": "FAIL\n0.79"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 936,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 9.54,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3940,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 11.64,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2439,
+  "true_label": 0,
+  "pred_label": 0,
+  "pred_prob": 0.04,
+  "latency_s": 17.93,
+  "raw": "PASS\n0.04"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 2276,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 10.82,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1989,
+  "true_label": 1,
+  "pred_label": 0,
+  "pred_prob": 0.08,
+  "latency_s": 11.26,
+  "raw": "PASS\n0.08"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 749,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 11.36,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4298,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 12.71,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 476,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 8.63,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 3992,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.72,
+  "latency_s": 5.19,
+  "raw": "FAIL\n0.72"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 1999,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 5.71,
+  "raw": "FAIL\n0.55"
+ },
+ {
+  "llm": "claude",
+  "model": "opus",
+  "test_idx": 4499,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.55,
+  "latency_s": 5.37,
+  "raw": "FAIL\n0.55"
+ }
+]
