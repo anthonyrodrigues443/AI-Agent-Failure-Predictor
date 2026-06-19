@@ -1,0 +1,112 @@
+[
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 2306,
+  "true_label": 0,
+  "pred_label": 0,
+  "pred_prob": 0.14,
+  "latency_s": 181.18,
+  "raw": "PASS\n0.14"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 1023,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.64,
+  "latency_s": 90.24,
+  "raw": "FAIL\n0.64"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 4823,
+  "true_label": 0,
+  "pred_label": 0,
+  "pred_prob": 0.34,
+  "latency_s": 163.48,
+  "raw": "PASS\n0.34"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 2281,
+  "true_label": 1,
+  "pred_label": 0,
+  "pred_prob": 0.28,
+  "latency_s": 175.23,
+  "raw": "PASS\n0.28"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 3897,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.68,
+  "latency_s": 36.77,
+  "raw": "FAIL\n0.68"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 3328,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.82,
+  "latency_s": 124.42,
+  "raw": "FAIL\n0.82"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 938,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.82,
+  "latency_s": 31.36,
+  "raw": "FAIL\n0.82"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 4012,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.86,
+  "latency_s": 28.71,
+  "raw": "FAIL\n0.86"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 2369,
+  "true_label": 1,
+  "pred_label": 1,
+  "pred_prob": 0.64,
+  "latency_s": 49.54,
+  "raw": "FAIL\n0.64"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 2681,
+  "true_label": 0,
+  "pred_label": 1,
+  "pred_prob": 0.68,
+  "latency_s": 52.35,
+  "raw": "FAIL\n0.68"
+ },
+ {
+  "llm": "codex",
+  "model": "gpt-5.4",
+  "test_idx": 3549,
+  "true_label": 1,
+  "pred_label": 0,
+  "pred_prob": 0.41,
+  "latency_s": 169.29,
+  "raw": "PASS\n0.41"
+ }
+]

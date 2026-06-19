@@ -12,6 +12,10 @@ pyarrow>=14.0          # parquet engine for data/processed/agent_runs.parquet
 xgboost>=2.0
 lightgbm>=4.1
 catboost>=1.2
+
+# Phase 4 (hyperparameter optimization) + Phase 5 (imbalance ablation)
+optuna>=3.5
+imbalanced-learn>=0.12   # SMOTE / ADASYN / BorderlineSMOTE / SMOTETomek / RandomUnderSampler
 # Phase 6+ (explainability / app / api) — installed later
 shap>=0.44
 streamlit>=1.30
