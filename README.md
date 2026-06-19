@@ -5,7 +5,7 @@
 > structurally blind to **84% of failures**.
 
 **Domain:** AI Infra / Agent Observability · **Type:** imbalanced binary classification
-(positive = failure, ~26% prevalence) · **Status:** Phase 4 of 7 complete (2026-06-18) — Optuna tuning + calibration + error analysis. Tuning lifts AUPRC by **+0.003** (champion CatBoost tuned, **0.6237**) — the ~0.62 ceiling holds from a fourth angle. The deployable wins are an honest frozen threshold and a clean split of the residual error into a *recoverable* precision-tradeoff band vs a small *irreducible* telemetry-light core (`latent_capability` is uncatchable at any threshold).
+(positive = failure, ~26% prevalence) · **Status:** Phase 5 of 7 complete (2026-06-19) — advanced techniques, ablation & the frontier-LLM head-to-head. **Nothing beat the calibrated CatBoost champion (AUPRC 0.6237):** on the same 50 runs it out-ranks Claude Opus & Haiku (AUPRC **0.833** vs 0.738 / 0.709) at ~70 µs/run and $0.0001/1k, while SMOTE/ADASYN *hurt* ranking and a 4-learner stack only tied (bases ≥0.92 correlated) — the ~0.62 ceiling holds a fifth time, now via ensembling.
 
 ---
 
@@ -102,8 +102,12 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 - **Phase 4 ✅** Optuna tuning + calibration + error analysis. Tuning adds only +0.003 AUPRC (ceiling holds
   from a 4th angle); the deployable wins are an **honest frozen threshold** and the finding that the miss is
   two parts — a recoverable precision-tradeoff band and a small *irreducible* telemetry-light core.
-- **Phase 5** advanced + ablation + **frontier-LLM head-to-head**.
-- **Phase 6** explainability (SHAP). **Phase 7** production pipeline + Streamlit dashboard.
+- **Phase 5 ✅** advanced techniques + ablation + **frontier-LLM head-to-head**. Nothing beat the
+  champion: SMOTE/ADASYN *cut* AUPRC, a leak-free 4-learner stack only tied (bases ≥0.92 correlated →
+  the ~0.62 ceiling holds a 5th time), the **Error/Retry/Loop** family carries the signal (−0.0222 when
+  dropped, 6× the next family), and the **1 MB tree out-ranks Claude Opus & Haiku** on the same 50 runs
+  (AUPRC 0.833 vs 0.738 / 0.709) at 5–6 orders of magnitude less latency and cost.
+- **Phase 6** production pipeline + Streamlit dashboard. **Phase 7** explainability (SHAP) + model card.
 
 ## Key findings so far
 1. The industry `context > 80%` rule is blind to 84% of failures.
@@ -119,6 +123,12 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 7. **The failure signal is in the trajectory, not the endpoint** — rate/shape features alone recover
    **94%** of the AUPRC, which is *why* early prediction works: the **first 3 steps recover 78%** of the
    full-run AUPRC — equal to the full-run accuracy of the industry `context>0.80` alarm.
+8. **A 1 MB calibrated tree out-ranks frontier LLMs at failure prediction** — on the same 50 agent runs
+   it beats zero-shot Claude Opus and Haiku on AUPRC (**0.833** vs 0.738 / 0.709) at ~147,000× / 341,000×
+   the speed and 45,000× / 3,000× the cost; the LLMs *cry wolf* (0.92–0.96 recall, ~0.5 precision —
+   uncalibrated). And advanced techniques can't break the ceiling either — SMOTE/ADASYN *cut* AUPRC and
+   a 4-learner OOF stack only ties (bases ≥0.92 correlated), so the ~0.62 ceiling now holds from **five**
+   independent angles (generator → model class → features → Optuna → ensembling).
 
 ---
 
@@ -224,6 +234,32 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 **Surprise / correction:** my going-in hypothesis (misses = telemetry-light *reasons*) was wrong — misses are governed by telemetry **magnitude**: false negatives are statistically indistinguishable from successes on every signal (retries 1.6 vs 4.6 for caught). The blind spot is the **frontier-model** (recall 5%) / low-tool-intensity (`multi_hop_qa` 1%) regime — rare, surprising, quiet failures. Also: calibrating the *tuned* tree is a **no-op** (raw Brier 0.147 already best) — counter to the reflex.<br><br>
 **Research:** Optuna/TPE diminishing-returns practice; scikit-learn calibration guide + imbalanced-calibration (sigmoid vs isotonic); precision-recall threshold selection on held-out data.<br><br>
 **Best Model So Far:** **CatBoost tuned + ALL** — AUPRC **0.6237**, Brier 0.147; honest deployable point **P=0.785 / R=0.267** at a frozen threshold. Goes into the Phase-5 LLM head-to-head.
+
+</td>
+</tr>
+</table>
+
+### Phase 5: Advanced Techniques, Ablation & the Frontier-LLM Head-to-Head — 2026-06-19
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was tested:** Five skeptic's stress-tests of the Phase-4 champion — a SMOTE/ADASYN/reweight imbalance ablation, a leak-free out-of-fold stacking ensemble, a mechanistic group ablation, and the headline: **Claude Opus, Claude Haiku, and Codex (GPT-5.4) zero-shot vs the 1 MB calibrated CatBoost** on the *same* 50-run stratified sample. **Nothing beat the plain champion** (AUPRC 0.6237).<br><br>
+**What worked best:** Still the **calibrated CatBoost `+ALL`** — and on the identical 50 rows it **out-ranks both Claude models** (AUPRC **0.833** vs Opus 0.738 / Haiku 0.709) at ~70 µs/run and $0.0001/1k.
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/phase5_llm_vs_custom.png" width="220">
+
+</td>
+<td valign="top" width="38%">
+
+**Key Insight:** A **1 MB calibrated tree beats frontier LLMs at ranking agent-failure risk** on quiet telemetry — at **~147,000× / 341,000×** the speed of Opus / Haiku and **45,000× / 3,000×** the cost. The LLMs *cry wolf* (recall 0.92–0.96, precision 0.51–0.59 — uncalibrated). This is the difference between a predictor you can run on *every step of every agent* and one you can't.<br><br>
+**Surprise:** **SMOTE/ADASYN made it worse** (−0.011 to −0.013 CV AUPRC — they interpolate synthetic failures straight into the class overlap), reweighting wrecked calibration (Brier 0.18 vs 0.147), and a 4-learner stack tied the champion to 4 decimals (bases ≥0.92 correlated) — the **~0.62 ceiling held a 5th time**, now via ensembling. Twist: model + LLM *together* (route only the tree's borderline cases to Opus) beat either alone (0.72 acc, exploratory).<br><br>
+**Research:** Elor & Averbuch-Elor, 2022 (*"To SMOTE, or not to SMOTE?"*) — synthetic oversampling hurts already-calibrated learners on overlapping classes, so we read the cost off precision + Brier rather than recall@0.5; Wolpert, 1992 (*Stacked Generalization*) — stacking needs decorrelated bases, and a correlation check confirmed we lacked them (all ≥0.92).<br><br>
+**Best Model So Far:** **CatBoost tuned `+ALL`** — AUPRC **0.6237**, Brier 0.147; unbeaten across generator → model class → features → Optuna → **ensembling**, and out-ranks Opus/Haiku on equal rows. Goes into the Phase-6 production pipeline + dashboard.
 
 </td>
 </tr>
