@@ -1,0 +1,60 @@
+{
+  "champion": "CatBoost tuned (+ALL, sigmoid-calibrated)",
+  "test_prevalence": 0.26,
+  "n_test": 5000,
+  "threshold_free": {
+    "auprc": 0.6240625894923777,
+    "roc_auc": 0.7840193347193349,
+    "brier": 0.1484360448526517
+  },
+  "at_threshold_0.5": {
+    "f1": 0.4677173360447382,
+    "precision": 0.6896551724137931,
+    "recall": 0.35384615384615387,
+    "accuracy": 0.7906
+  },
+  "recall_at_p80": 0.24923076923076923,
+  "deployed_operating_point": {
+    "threshold": 0.6323345209958025,
+    "precision": 0.7850678733031674,
+    "recall": 0.26692307692307693,
+    "f1": 0.3983926521239954
+  },
+  "latency": {
+    "single_row_ms": 9.941865000097703,
+    "batched_ms_per_row": 0.031749799987301236,
+    "throughput_rows_per_s": 31496.26140636992
+  },
+  "recall_by_reason": [
+    {
+      "reason": "stuck_retry_loop",
+      "n": 629,
+      "recall": 0.1494
+    },
+    {
+      "reason": "early_exogenous",
+      "n": 324,
+      "recall": 0.1327
+    },
+    {
+      "reason": "cascade_failure",
+      "n": 164,
+      "recall": 0.4085
+    },
+    {
+      "reason": "context_overflow",
+      "n": 147,
+      "recall": 0.9728
+    },
+    {
+      "reason": "degenerate_loop",
+      "n": 21,
+      "recall": 0.0
+    },
+    {
+      "reason": "latent_capability",
+      "n": 15,
+      "recall": 0.0
+    }
+  ]
+}
