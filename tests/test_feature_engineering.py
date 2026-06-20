@@ -62,9 +62,31 @@ def test_synthesize_run_clamps_steps():
     assert long["num_steps"] == 45                        # clamped to MAX_STEPS
 
 
-def test_single_row_missing_category_still_49():
-    # a run whose task/tier are the dropped baseline levels -> all dummies 0, still 49 cols
+def test_single_row_baseline_category_all_zero():
+    # a run whose task/tier ARE the dropped baseline levels -> all dummies 0, still 49 cols
     run = synthesize_run(8, "code_gen", "frontier", 0.0, 0, 0.3, 0)
     X = featurize_one(run)
     assert X.shape == (1, 49)
     assert X[["task_type_data_analysis", "model_tier_mid"]].sum().sum() == 0
+
+
+def test_single_row_nonbaseline_category_encoded():
+    # regression: get_dummies(drop_first=True) used to drop the row's own category on a
+    # single row, mis-encoding non-baseline task/tier as the baseline. Must one-hot correctly.
+    run = synthesize_run(10, "deep_research", "small", 0.3, 1, 0.6, 0)
+    X = featurize_one(run)
+    assert X["task_type_deep_research"].iloc[0] == 1.0
+    assert X["model_tier_small"].iloc[0] == 1.0
+    # the other task/tier dummies stay 0
+    assert X[["task_type_data_analysis", "task_type_multi_hop_qa",
+              "task_type_web_navigation", "model_tier_mid"]].sum().sum() == 0
+
+
+def test_synthesize_retries_consistent_with_trace():
+    # P3 fix: max_consecutive_retries must be derivable from the retry trace (no phantom retries)
+    run = synthesize_run(8, "code_gen", "mid", 0.0, 3, 0.3, 0)  # 0 error rate but retries requested
+    assert run["num_retries"] == sum(1 for r in run["trace_retry"] if r > 0)
+    # with errors present, a 3-long retry burst is realisable
+    run2 = synthesize_run(12, "deep_research", "small", 0.6, 3, 0.7, 1)
+    assert run2["max_consecutive_retries"] <= run2["num_steps"]
+    assert run2["num_retries"] >= run2["max_consecutive_retries"]

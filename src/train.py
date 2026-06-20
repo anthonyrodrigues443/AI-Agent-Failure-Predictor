@@ -88,6 +88,9 @@ def train(config_path: str | None = None, n_runs: int | None = None, seed: int |
     op_prec = cfg["metrics"]["operating_precision"]
     champ_cfg = cfg["champion"]
     ew_cfg = cfg["early_window"]
+    # The expected-AUPRC/threshold reproduction asserts only hold for the frozen default
+    # run; a custom --n/--seed legitimately produces different numbers, so skip them there.
+    is_frozen_default = (n_runs == cfg["data"]["n_runs"] and seed == cfg.get("seed", 42))
 
     models_dir = os.path.join(ROOT, "models")
     results_dir = os.path.join(ROOT, "results")
@@ -145,15 +148,19 @@ def train(config_path: str | None = None, n_runs: int | None = None, seed: int |
     print(f"[train] frozen threshold {thr_star:.4f} (OOF P={prec_oof:.3f} R={rec_oof:.3f}) -> "
           f"test P={honest_prec:.3f} R={honest_rec:.3f}  ({time.time()-t2:.0f}s)")
 
-    # --- Verify we reproduced the research champion ------------------------------------
+    # --- Verify we reproduced the research champion (frozen default run only) -----------
     exp_auprc = champ_cfg.get("expected_test_auprc")
-    if exp_auprc is not None:
-        assert abs(test_metrics["auprc"] - exp_auprc) < 5e-4, \
-            f"champion AUPRC {test_metrics['auprc']:.5f} != expected {exp_auprc} (>5e-4 drift)"
     exp_thr = champ_cfg.get("expected_threshold")
-    if exp_thr is not None and thr_star is not None:
-        assert abs(thr_star - exp_thr) < 5e-3, f"threshold {thr_star:.4f} != expected {exp_thr}"
-    print("[train] reproduction check passed (AUPRC + threshold within tolerance)")
+    if is_frozen_default:
+        if exp_auprc is not None:
+            assert abs(test_metrics["auprc"] - exp_auprc) < 5e-4, \
+                f"champion AUPRC {test_metrics['auprc']:.5f} != expected {exp_auprc} (>5e-4 drift)"
+        if exp_thr is not None and thr_star is not None:
+            assert abs(thr_star - exp_thr) < 5e-3, f"threshold {thr_star:.4f} != expected {exp_thr}"
+        print("[train] reproduction check passed (AUPRC + threshold within tolerance)")
+    else:
+        print(f"[train] custom run (n={n_runs}, seed={seed}) — skipping frozen-default "
+              f"reproduction asserts")
 
     champion = {
         "calibrated_model": calibrated,

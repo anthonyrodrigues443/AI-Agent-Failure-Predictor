@@ -116,6 +116,15 @@ def _lag1ac(a) -> float:
     return float(np.corrcoef(x, z)[0, 1])
 
 
+def _max_consec(seq) -> int:
+    """Longest run of consecutive nonzero entries (for deriving max_consecutive_retries)."""
+    best = cur = 0
+    for v in seq:
+        cur = cur + 1 if v > 0 else 0
+        best = max(best, cur)
+    return int(best)
+
+
 def _first(a, n=None):
     a = list(a)
     k = max(1, len(a) // 3) if n is None else min(n, len(a))
@@ -131,11 +140,24 @@ def _last(a):
 # ---------------------------------------------------------------------------------------
 # Block builders
 # ---------------------------------------------------------------------------------------
+def _base_dummies(df: pd.DataFrame) -> pd.DataFrame:
+    """The 6 non-baseline one-hot columns, frame-INDEPENDENTLY.
+
+    `get_dummies(drop_first=True)` drops the *first level present in the frame*, so on a
+    single row (or a homogeneous batch) it silently encodes a non-baseline category as the
+    all-zeros baseline. Instead: one-hot ALL fixed levels, then keep only the non-baseline
+    columns — code_gen / frontier are the baseline by construction, for any input size.
+    """
+    all_levels = ([f"task_type_{t}" for t in TASK_LEVELS]
+                  + [f"model_tier_{m}" for m in TIER_LEVELS])
+    d = pd.get_dummies(df[BASE_CATEG], columns=BASE_CATEG).reindex(columns=all_levels, fill_value=0)
+    return d[BASE_DUMMIES].astype(float)
+
+
 def build_base(df: pd.DataFrame) -> pd.DataFrame:
     """20 numeric aggregates + 6 one-hot dummies, reindexed to the canonical order."""
-    base = pd.get_dummies(df[BASE_NUMERIC + BASE_CATEG], columns=BASE_CATEG, drop_first=True)
-    # Reindex so a single row missing a category still yields all dummy columns (= 0).
-    return base.reindex(columns=BASE_NUMERIC + BASE_DUMMIES, fill_value=0).astype(float)
+    out = pd.concat([df[BASE_NUMERIC], _base_dummies(df)], axis=1)
+    return out.reindex(columns=BASE_NUMERIC + BASE_DUMMIES, fill_value=0).astype(float)
 
 
 def _lead_row(r: Mapping) -> dict:
@@ -224,10 +246,7 @@ def _ew_row(r: Mapping, k: int) -> dict:
 
 def early_window_features(df_traces: pd.DataFrame, k: int) -> pd.DataFrame:
     ew = pd.DataFrame([_ew_row(r, k) for _, r in df_traces.iterrows()], index=df_traces.index)
-    start = pd.get_dummies(
-        df_traces[["prompt_tokens", "temperature", "task_type", "model_tier"]],
-        columns=["task_type", "model_tier"], drop_first=True,
-    ).reindex(columns=EW_START, fill_value=0)
+    start = pd.concat([df_traces[["prompt_tokens", "temperature"]], _base_dummies(df_traces)], axis=1)
     out = pd.concat([ew, start], axis=1)
     return out.reindex(columns=EW_FEATURE_ORDER, fill_value=0.0).astype(float)
 
@@ -282,18 +301,23 @@ def synthesize_run(num_steps: int, task_type: str, model_tier: str,
     n_err = int(round(tool_error_rate * max(num_tool_calls, 1)))
     err_steps = sorted(tool_steps)[:n_err] if tool_steps else list(range(min(n_err, n)))
     trace_err = [1 if i in set(err_steps) else 0 for i in range(n)]
-    tool_error_count = sum(1 for i in err_steps if trace_tool[i])
-    error_count_subtotal = sum(trace_err) - tool_error_count
 
-    # Retries piled onto the first error steps up to the requested consecutive max.
+    # Retries: a contiguous burst of the requested length, anchored at the first error step
+    # (a retry only follows an error, so we also flag those steps as errors). Every retry/error
+    # aggregate is then DERIVED from the final traces — so the run can never be internally
+    # inconsistent (e.g. max_consecutive_retries>0 with an all-zero retry trace).
     trace_retry = [0] * n
-    rem = int(max_consecutive_retries)
-    for i in err_steps:
-        if rem <= 0:
-            break
-        trace_retry[i] = min(2, rem + 1)
-        rem -= trace_retry[i]
+    R = int(max(max_consecutive_retries, 0))
+    if R > 0:
+        start = err_steps[0] if err_steps else 0
+        for j in range(R):
+            idx = start + j
+            if idx >= n:
+                break
+            trace_retry[idx] = 1
+            trace_err[idx] = 1
     num_retries = int(sum(trace_retry))
+    mcr = _max_consec(trace_retry)
 
     # Reasoning loops late in the run (where they actually occur).
     trace_loop = [0] * n
@@ -302,7 +326,9 @@ def synthesize_run(num_steps: int, task_type: str, model_tier: str,
         if 0 <= idx < n:
             trace_loop[idx] = 1
 
-    max_depth = 1 + int(round(2 * tool_error_rate)) + (max_consecutive_retries > 1)
+    tool_error_count = sum(1 for i in range(n) if trace_err[i] and trace_tool[i])
+    error_count_subtotal = sum(trace_err) - tool_error_count
+    max_depth = 1 + int(round(2 * tool_error_rate)) + (mcr > 1)
     total_err = tool_error_count + error_count_subtotal
     return {
         "task_type": task_type, "model_tier": model_tier,
@@ -315,7 +341,7 @@ def synthesize_run(num_steps: int, task_type: str, model_tier: str,
         "tool_error_count": int(tool_error_count),
         "tool_error_rate": tool_error_count / max(num_tool_calls, 1),
         "num_retries": int(num_retries),
-        "max_consecutive_retries": int(max_consecutive_retries),
+        "max_consecutive_retries": int(mcr),
         "error_count_subtotal": int(error_count_subtotal),
         "reasoning_loop_count": int(reasoning_loops),
         "tool_calls_per_step": num_tool_calls / max(n, 1),

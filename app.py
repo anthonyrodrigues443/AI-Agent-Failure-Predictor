@@ -241,9 +241,13 @@ with right:
         if run.get("failure_reason") and truth["label"]:
             st.caption(f"Failure reason: **{run['failure_reason']}**")
     lead = early_warning_lead(run, alert_prob=0.5, ew=ew)
-    if lead["alerted"]:
+    if lead["alerted"] and pred["predicted_failure"]:
         st.success(f"⏱️ Early-warning model crosses 50% risk at **step {lead['alert_step']}** — "
                    f"**{lead['steps_early']} step(s) before** the run's {lead['n_steps']}-step end.")
+    elif lead["alerted"]:
+        st.warning(f"⚠️ Early-warning model crosses 50% risk at step {lead['alert_step']}, but the "
+                   f"full run scores **below** the failure threshold — this would be a **false alarm**, "
+                   f"not a catch.")
     else:
         st.info("Early-warning model stays below 50% across the observed window.")
 

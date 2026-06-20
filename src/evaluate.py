@@ -66,9 +66,12 @@ def benchmark_latency(X, champ, n_warmup: int = 50, n_iter: int = 300) -> dict:
 
 def main() -> dict:
     cfg = _load_cfg()
-    seed, n_runs = cfg.get("seed", 42), cfg["data"]["n_runs"]
     test_size, op = cfg["data"]["test_size"], cfg["metrics"]["operating_precision"]
     champ = load_champion()
+    # Rebuild the SAME split the champion was trained on (from its stored metadata), not the
+    # current config — so evaluation stays valid even if config drifts or --n/--seed was used.
+    seed = champ.get("seed", cfg.get("seed", 42))
+    n_runs = champ.get("n_runs", cfg["data"]["n_runs"])
 
     print(f"[evaluate] champion: {champ['champion']} · threshold {champ['threshold']:.4f}")
     print(f"[evaluate] rebuilding held-out split (n={n_runs}, seed={seed}) ...")
