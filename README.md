@@ -5,7 +5,9 @@
 > structurally blind to **84% of failures**.
 
 **Domain:** AI Infra / Agent Observability · **Type:** imbalanced binary classification
-(positive = failure, ~26% prevalence) · **Status:** Phase 5 of 7 complete (2026-06-19) — advanced techniques, ablation & the frontier-LLM head-to-head. **Nothing beat the calibrated CatBoost champion (AUPRC 0.6237):** on the same 50 runs it out-ranks Claude Opus & Haiku (AUPRC **0.833** vs 0.738 / 0.709) at ~70 µs/run and $0.0001/1k, while SMOTE/ADASYN *hurt* ranking and a 4-learner stack only tied (bases ≥0.92 correlated) — the ~0.62 ceiling holds a fifth time, now via ensembling.
+(positive = failure, ~26% prevalence) · **Status:** Phase 6 of 7 complete (2026-06-20) — **production pipeline + real-time risk dashboard.** The five-phase champion is now a 1.1 MB serving artefact (`models/champion.joblib`), reproduced from scratch with **0.00e+00 prediction drift** and asserted in `train.py` (test AUPRC **0.62406**, frozen P≥0.80 threshold 0.632 → P=0.785 R=0.267). A Streamlit dashboard scores a run in **~32 µs (batched, ~324,000× faster than Opus)**, explains it by telemetry family (SHAP), and shows the early-window model raising the alarm **8–14 steps before** a failing run ends.
+
+![Dashboard](results/ui_screenshot.png)
 
 ---
 
@@ -76,19 +78,28 @@ false alarms). Every comparison table this week ranks on AUPRC.
 
 ## Repo layout
 ```
-src/data_pipeline.py     causal agent-run simulator (the dataset)
-src/utils.py             shared metric helpers (evaluate, recall_at_precision)
-config/config.yaml       features, metric, paths
-notebooks/phase1_eda_baseline.ipynb   executed: EDA + leakage checks + 3 baselines (23 cells)
-results/                 metrics.json, EXPERIMENT_LOG.md, phase1_*.png (5 figures)
-reports/day1_phase1_report.md         full research write-up
+src/data_pipeline.py        causal agent-run simulator (the dataset)
+src/feature_engineering.py  canonical 49-feature pipeline (base+LEAD+DOM) + early-window + trace synth
+src/train.py                deterministic training — reproduces champion + early-window + SHAP twin
+src/predict.py              inference: predict_run / predict_batch / explain_run / early_window_curve
+src/evaluate.py             held-out metric bundle + latency benchmark + per-reason recall
+src/utils.py                shared metric helpers (evaluate, recall_at_precision)
+app.py                      Streamlit real-time risk dashboard
+config/config.yaml          features, metric, frozen champion + early-window hyperparameters
+models/model_card.md        Google/HF-format model card
+notebooks/phase{1..5}_*.ipynb   executed research notebooks (EDA → models → FE → tuning → ablation/LLM)
+tests/                      contract + inference tests (12 passing)
+results/                    metrics.json, EXPERIMENT_LOG.md, ui_screenshot.png, phase*_*.png
+reports/day{1..6}_*.md      full per-phase research write-ups
 ```
 
 ## Reproduce
 ```bash
 pip install -r requirements.txt
-python -c "from src.data_pipeline import build_and_save; build_and_save()"   # regenerate data
-jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baseline.ipynb
+python -m src.train         # generate data → reproduce champion + early-window (~3.5 min, asserts AUPRC 0.624)
+python -m src.evaluate      # held-out metrics + latency benchmark → results/phase6_eval.json
+pytest -q                   # 12 contract/inference tests
+streamlit run app.py        # the real-time risk dashboard
 ```
 
 ## Roadmap
@@ -107,7 +118,10 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
   the ~0.62 ceiling holds a 5th time), the **Error/Retry/Loop** family carries the signal (−0.0222 when
   dropped, 6× the next family), and the **1 MB tree out-ranks Claude Opus & Haiku** on the same 50 runs
   (AUPRC 0.833 vs 0.738 / 0.709) at 5–6 orders of magnitude less latency and cost.
-- **Phase 6** production pipeline + Streamlit dashboard. **Phase 7** explainability (SHAP) + model card.
+- **Phase 6 ✅** production pipeline (`train`/`predict`/`evaluate`) + **real-time Streamlit dashboard** +
+  SHAP explanations + model card. Champion reproduced with **0.00e+00 prediction drift**; ~32 µs/run
+  batched inference; the early-window model raises a 50%-risk alarm **8–14 steps before** failing runs end.
+- **Phase 7** testing + final README/report consolidation + polish.
 
 ## Key findings so far
 1. The industry `context > 80%` rule is blind to 84% of failures.
@@ -260,6 +274,33 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/phase1_eda_baselin
 **Surprise:** **SMOTE/ADASYN made it worse** (−0.011 to −0.013 CV AUPRC — they interpolate synthetic failures straight into the class overlap), reweighting wrecked calibration (Brier 0.18 vs 0.147), and a 4-learner stack tied the champion to 4 decimals (bases ≥0.92 correlated) — the **~0.62 ceiling held a 5th time**, now via ensembling. Twist: model + LLM *together* (route only the tree's borderline cases to Opus) beat either alone (0.72 acc, exploratory).<br><br>
 **Research:** Elor & Averbuch-Elor, 2022 (*"To SMOTE, or not to SMOTE?"*) — synthetic oversampling hurts already-calibrated learners on overlapping classes, so we read the cost off precision + Brier rather than recall@0.5; Wolpert, 1992 (*Stacked Generalization*) — stacking needs decorrelated bases, and a correlation check confirmed we lacked them (all ≥0.92).<br><br>
 **Best Model So Far:** **CatBoost tuned `+ALL`** — AUPRC **0.6237**, Brier 0.147; unbeaten across generator → model class → features → Optuna → **ensembling**, and out-ranks Opus/Haiku on equal rows. Goes into the Phase-6 production pipeline + dashboard.
+
+</td>
+</tr>
+</table>
+
+### Phase 6: Production Pipeline + Real-Time Risk Dashboard — 2026-06-20
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was built:** the five-phase research champion, packaged for serving without drift. The notebook feature code was lifted into one canonical module (`feature_engineering.py`), `train.py` rebuilds the champion deterministically (frozen Optuna params — no tuning at deploy time) with a **reproduction assert**, and `predict.py`/`evaluate.py` expose scoring + a latency benchmark. A polished **Streamlit dashboard** scores a run live: risk gauge, SHAP-by-telemetry-family, and an **early-window "failure in N steps"** timeline.<br><br>
+**Reproduction:** rebuilt from scratch in 212 s → test **AUPRC 0.62406**, frozen threshold **0.632** (P=0.785 / R=0.267) — identical to Phase 4, with **`max|Δproba| = 0.00e+00`** vs the cached champion.
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/ui_screenshot.png" width="230">
+
+</td>
+<td valign="top" width="38%">
+
+**Headline number (latency):** **~32 µs/run batched** (~31,500 rows/s) on a laptop CPU — **≈324,000× faster than Claude Opus zero-shot** (10.3 s/call), the real figure behind the cost/speed story.<br><br>
+**The product:** the early-window model raises a **50%-risk alarm 8–14 steps before** failing runs end (k=3 already recovers 76% of full-run AUPRC). SHAP attributes risk to the **Error/Retry/Loop** family (the load-bearing signal, −0.022 AUPRC when ablated).<br><br>
+**Honest by design:** the model card + dashboard footer ship the per-reason recall — context_overflow **0.97**, cascade 0.41, retry 0.15, and the irreducible `latent_capability` core at **0.00 at any threshold**. No aggregate hides the blind spot.<br><br>
+**Research:** Mitchell et al. 2019 (Model Cards); Niculescu-Mizil & Caruana 2005 (Platt calibration is a monotone post-map → SHAP twin is valid); Scheffer et al. 2009 (critical-slowing-down early-warning → the lead-time timeline).<br><br>
+**Best Model:** unchanged — **CatBoost tuned `+ALL`**, now a 1.1 MB serving artefact with a frozen threshold and an early-window companion. Phase 7: tests + final consolidation.
 
 </td>
 </tr>

@@ -44,6 +44,37 @@ metrics:
   operating_precision: 0.80
   secondary: [roc_auc, f1, precision, recall]
 
+# --- Production champion (frozen from Phase 4 Optuna; Phase 5 confirmed unbeaten) ---
+# train.py reads these so the served model is reproduced deterministically, no Optuna
+# at deploy time. Champion = sigmoid-calibrated, Optuna-tuned CatBoost on the +ALL 49f.
+champion:
+  model: catboost                  # CatBoost tuned, +ALL feature set (49 features)
+  calibration: sigmoid             # Platt — robust on imbalanced data; lowest deployable risk
+  feature_set: all                 # base(26) + LEAD(16) + DOM(7)
+  catboost_params:
+    iterations: 543
+    learning_rate: 0.02490643969382439
+    depth: 4
+    l2_leaf_reg: 5.475344508142733
+    random_strength: 1.320457481218804
+    bagging_temperature: 0.12203823484477883
+    border_count: 158
+  # Expected held-out numbers (asserted by train.py within tolerance).
+  expected_test_auprc: 0.62406
+  expected_threshold: 0.6323       # frozen on OOF train at P>=0.80 (honest operating point)
+
+# Early-window model: "predict failure N steps before it happens". Sigmoid-calibrated
+# HistGBM trained on the first-k steps only. Phase 3/4: k=3 -> ~78% of full-run AUPRC.
+early_window:
+  model: histgbm
+  calibration: sigmoid
+  k_grid: [2, 3, 4, 5, 6, 8, 10, 12]
+  histgbm_params:
+    max_iter: 400
+    learning_rate: 0.05
+    max_leaf_nodes: 31
+    l2_regularization: 1.0
+
 paths:
   results: results
   reports: reports
