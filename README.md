@@ -5,7 +5,7 @@
 > structurally blind to **84% of failures**.
 
 **Domain:** AI Infra / Agent Observability · **Type:** imbalanced binary classification
-(positive = failure, ~26% prevalence) · **Status:** Phase 6 of 7 complete (2026-06-20) — **production pipeline + real-time risk dashboard.** The five-phase champion is now a 1.1 MB serving artefact (`models/champion.joblib`), reproduced from scratch with **0.00e+00 prediction drift** and asserted in `train.py` (test AUPRC **0.62406**, frozen P≥0.80 threshold 0.632 → P=0.785 R=0.267). A Streamlit dashboard scores a run in **~32 µs (batched, ~324,000× faster than Opus)**, explains it by telemetry family (SHAP), and shows the early-window model raising the alarm **8–14 steps before** a failing run ends.
+(positive = failure, ~26% prevalence) · **Status:** ✅ **Complete — Phase 7 of 7 (2026-06-21).** The five-phase research champion is a 1.1 MB serving artefact (`models/champion.joblib`), reproduced from scratch with **0.00e+00 prediction drift** and asserted in `train.py` (test AUPRC **0.62406**, frozen P≥0.80 threshold 0.632 → P=0.785 R=0.267). It ships behind a **Streamlit dashboard** *and* a **FastAPI service** (`src/serve.py` + `Dockerfile`), scores a run in **~32 µs (batched, ~324,000× faster than Opus)**, explains it by telemetry family (SHAP), and raises the early-window alarm **8–14 steps before** a failing run ends. **43 pytest contracts** lock the generator's no-leakage guarantee, the 49-feature schema, the metric helpers, and the champion's reproduction. Full write-up: [`reports/final_report.md`](reports/final_report.md).
 
 ![Dashboard](results/ui_screenshot.png)
 
@@ -84,22 +84,26 @@ src/train.py                deterministic training — reproduces champion + ear
 src/predict.py              inference: predict_run / predict_batch / explain_run / early_window_curve
 src/evaluate.py             held-out metric bundle + latency benchmark + per-reason recall
 src/utils.py                shared metric helpers (evaluate, recall_at_precision)
+src/serve.py                FastAPI scoring service (/health /predict /predict/whatif /model)
 app.py                      Streamlit real-time risk dashboard
+Dockerfile                  containerised FastAPI service (trains the model into the image)
 config/config.yaml          features, metric, frozen champion + early-window hyperparameters
 models/model_card.md        Google/HF-format model card
 notebooks/phase{1..5}_*.ipynb   executed research notebooks (EDA → models → FE → tuning → ablation/LLM)
-tests/                      contract + inference tests (12 passing)
+tests/                      43 contract / inference / HTTP tests (generator leakage guard, schema, metrics, serve)
 results/                    metrics.json, EXPERIMENT_LOG.md, ui_screenshot.png, phase*_*.png
-reports/day{1..6}_*.md      full per-phase research write-ups
+reports/day{1..7}_*.md      full per-phase research write-ups
+reports/final_report.md     consolidated mini research paper (all 7 phases)
 ```
 
 ## Reproduce
 ```bash
 pip install -r requirements.txt
-python -m src.train         # generate data → reproduce champion + early-window (~3.5 min, asserts AUPRC 0.624)
-python -m src.evaluate      # held-out metrics + latency benchmark → results/phase6_eval.json
-pytest -q                   # 12 contract/inference tests
-streamlit run app.py        # the real-time risk dashboard
+python -m src.train                  # generate data → reproduce champion + early-window (~3 min, asserts AUPRC 0.624)
+python -m src.evaluate               # held-out metrics + latency benchmark → results/phase6_eval.json
+pytest -q                            # 43 contract / inference / HTTP tests
+streamlit run app.py                 # the real-time risk dashboard
+uvicorn src.serve:app --port 8000    # the FastAPI scoring service   (or: docker build -t afp . && docker run -p 8000:8000 afp)
 ```
 
 ## Roadmap
@@ -121,7 +125,10 @@ streamlit run app.py        # the real-time risk dashboard
 - **Phase 6 ✅** production pipeline (`train`/`predict`/`evaluate`) + **real-time Streamlit dashboard** +
   SHAP explanations + model card. Champion reproduced with **0.00e+00 prediction drift**; ~32 µs/run
   batched inference; the early-window model raises a 50%-risk alarm **8–14 steps before** failing runs end.
-- **Phase 7** testing + final README/report consolidation + polish.
+- **Phase 7 ✅** testing + consolidation. **43 pytest contracts** (generator no-leakage guard, 49-feature
+  schema, metric edge cases, champion reproduction, HTTP surface), a **FastAPI service** (`src/serve.py`)
+  + **Dockerfile**, and the consolidated [`reports/final_report.md`](reports/final_report.md). The project
+  is complete and reproducible end-to-end.
 
 ## Key findings so far
 1. The industry `context > 80%` rule is blind to 84% of failures.
@@ -301,6 +308,32 @@ streamlit run app.py        # the real-time risk dashboard
 **Honest by design:** the model card + dashboard footer ship the per-reason recall — context_overflow **0.97**, cascade 0.41, retry 0.15, and the irreducible `latent_capability` core at **0.00 at any threshold**. No aggregate hides the blind spot.<br><br>
 **Research:** Mitchell et al. 2019 (Model Cards); Niculescu-Mizil & Caruana 2005 (Platt calibration is a monotone post-map → SHAP twin is valid); Scheffer et al. 2009 (critical-slowing-down early-warning → the lead-time timeline).<br><br>
 **Best Model:** unchanged — **CatBoost tuned `+ALL`**, now a 1.1 MB serving artefact with a frozen threshold and an early-window companion. Phase 7: tests + final consolidation.
+
+</td>
+</tr>
+</table>
+
+### Phase 7: Testing, Serving & Consolidation — 2026-06-21
+
+<table>
+<tr>
+<td valign="top" width="38%">
+
+**What was built:** the credibility layer. The pytest suite grew **14 → 43** tests across six files — generator invariants + a **single-feature no-leakage guard** (`max AUC < 0.85`, the test that would have caught the Phase-1 leak), the byte-identical trace/aggregate guarantee, the 49-feature schema + single-row dummy encoding, metric-helper edge cases (unreachable precision → `None` threshold), champion **reproduction** (held-out AUPRC within 0.01 of 0.624), and the HTTP surface. Added a **FastAPI service** (`src/serve.py`) reusing the exact `predict` functions (no serving skew) and a **Dockerfile** that trains the model into the image. Consolidated all 7 phases into [`reports/final_report.md`](reports/final_report.md).<br><br>
+**Verification:** `python -m src.train` reproduced the champion to **AUPRC 0.62406 / threshold 0.6323** (asserts pass); all **43 tests green**; the FastAPI `/predict/whatif` scores a trouble run at **P(fail)=0.896 [Critical]** with an early-warning alert.
+
+</td>
+<td align="center" width="24%">
+
+<img src="results/phase2_model_comparison.png" width="220">
+
+</td>
+<td valign="top" width="38%">
+
+**Key Insight (the consolidation thesis):** almost all the available lift is in *replacing the rule with any learned score* — industry `context>0.80` rule (AUPRC 0.48) → 1-line LogReg (0.60) is **+24%**; LogReg → fully-tuned, feature-engineered, ensembled champion (0.62) is **+4%**. The sophistication after the first learned model is nearly free; the regime change is the baseline swap.<br><br>
+**Honest by design:** model-dependent tests **skip cleanly** when the gitignored artefacts are absent, so CI stays green without shipping a 58 MB model; the leakage guard and reproduction asserts live in code, not prose.<br><br>
+**Research:** standard ML-engineering practice — HF/Google **Model Cards** (Mitchell et al. 2019), train/serve-skew avoidance (one canonical featuriser), and contract testing of the data generator (the leakage guard is the project's load-bearing test).<br><br>
+**Final state:** complete, reproducible end-to-end (`train` → `evaluate` → `pytest` → `streamlit`/`uvicorn`/`docker`). Champion unchanged: **CatBoost tuned `+ALL`**, AUPRC **0.624**, out-ranks Opus & Haiku at ~32 µs/run.
 
 </td>
 </tr>
