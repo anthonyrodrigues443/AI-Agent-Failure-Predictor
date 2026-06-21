@@ -40,6 +40,10 @@ def test_split_is_stratified():
 @needs_model
 def test_evaluate_main_reproduces_champion(tmp_path, monkeypatch):
     from src import evaluate as ev
+    # Redirect the results write to a temp dir so the test stays hermetic (does not mutate
+    # the committed results/phase6_eval.json). load_champion still reads the real artefact.
+    (tmp_path / "results").mkdir()
+    monkeypatch.setattr(ev, "ROOT", str(tmp_path))
     report = ev.main()
     # primary metric reproduces the frozen research champion within tolerance
     assert report["threshold_free"]["auprc"] == pytest.approx(0.624, abs=0.01)
@@ -65,10 +69,12 @@ def test_latency_benchmark_is_fast():
 
 
 @needs_model
-def test_recall_by_reason_orders_context_overflow_high():
+def test_recall_by_reason_orders_context_overflow_high(tmp_path, monkeypatch):
     """Sanity on the honest-limitations surface: the loud failure mode (context_overflow)
     is caught far more often than the irreducible one (latent_capability)."""
     from src import evaluate as ev
+    (tmp_path / "results").mkdir()
+    monkeypatch.setattr(ev, "ROOT", str(tmp_path))
     report = ev.main()
     rec = {r["reason"]: r["recall"] for r in report["recall_by_reason"]}
     if "context_overflow" in rec and "latent_capability" in rec:

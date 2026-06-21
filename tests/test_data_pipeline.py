@@ -18,7 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data_pipeline import (  # noqa: E402
     generate_dataset, generate_traces, MAX_STEPS, TASK_TYPES, MODEL_TIERS,
 )
-from src.feature_engineering import BASE_NUMERIC, TRACE_COLS  # noqa: E402
+from src.feature_engineering import (  # noqa: E402
+    TRACE_COLS, assemble_features, ALL_FEATURE_ORDER,
+)
 
 N = 3000
 SEED = 11
@@ -86,17 +88,23 @@ def test_run_length_decoupled_from_outcome(df):
     assert max(auc, 1 - auc) < 0.62, f"num_steps alone scores AUC {auc:.3f} — length leak?"
 
 
-def test_no_single_feature_leaks_the_label(df):
-    """No observed telemetry feature should near-perfectly encode the label (the Phase-1
-    bug produced a feature with AUC 1.0). A real causal generator caps single-feature AUC."""
+def test_no_single_feature_leaks_the_label(traces):
+    """No single MODEL-INPUT feature should near-perfectly encode the label (the Phase-1 bug
+    produced a feature with AUC 1.0). A real causal generator caps single-feature AUC. This
+    guard runs over the FULL 49-feature `+ALL` matrix the champion actually trains on — base
+    aggregates AND the engineered LEAD/DOM interactions (the strongest, ix_retry_casc, is the
+    one to watch) — not just the raw aggregates."""
+    X = assemble_features(traces)
+    assert list(X.columns) == ALL_FEATURE_ORDER          # exactly the model's inputs
+    y = traces["failure"].to_numpy()
     aucs = {}
-    for c in BASE_NUMERIC:
-        if df[c].nunique() < 2:
+    for c in X.columns:
+        if X[c].nunique() < 2:
             continue
-        a = roc_auc_score(df["failure"], df[c])
+        a = roc_auc_score(y, X[c])
         aucs[c] = max(a, 1 - a)
-    worst = max(aucs.values())
-    assert worst < 0.85, f"single-feature leak: {max(aucs, key=aucs.get)} AUC {worst:.3f}"
+    worst_feat = max(aucs, key=aucs.get)
+    assert aucs[worst_feat] < 0.85, f"single-feature leak: {worst_feat} AUC {aucs[worst_feat]:.3f}"
 
 
 def test_derived_aggregates_are_consistent(df):

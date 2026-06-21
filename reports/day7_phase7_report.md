@@ -43,17 +43,18 @@ predict.py in serve.py; generator contract testing → `test_data_pipeline.py`.
 **Interpretation:** the deploy-time pipeline is honest — the asserts in `train.py` would have
 failed loudly on any drift. Numbers match Phase 4/6 exactly.
 
-### 7.2: Test-suite expansion (14 → 43)
-**Method:** four new test files + the two existing ones.
+### 7.2: Test-suite expansion (14 → 47)
+**Method:** four new test files + the two existing ones. (The single-feature leakage guard and
+the four extra `test_serve` cases below were strengthened in response to the Codex review — §7.5.)
 | File | Tests | What it locks |
 |---|--:|---|
-| `test_data_pipeline.py` | 12 | determinism, trace==aggregate byte-identity, run-length decoupled from outcome (AUC<0.62), **no single-feature leak (AUC<0.85)**, exo failures telemetry-light, 84%-below-context headline |
+| `test_data_pipeline.py` | 12 | determinism, trace==aggregate byte-identity, run-length decoupled from outcome (AUC<0.62), **no single-feature leak over all 49 inputs (AUC<0.85; worst = `ix_retry_casc` 0.755)**, exo failures telemetry-light, 84%-below-context headline |
 | `test_feature_engineering.py` | 9 | 49-col schema/order, single-row dummy encoding, synth-run consistency |
 | `test_utils.py` | 6 | metric bundle keys/ranges, perfect-separation, **unreachable precision → `None` threshold** |
-| `test_evaluate.py` | 5 | split determinism + stratification, **champion reproduction (AUPRC≈0.624)**, latency >1k rows/s, reason-recall ordering |
+| `test_evaluate.py` | 5 | split determinism + stratification, **champion reproduction (AUPRC≈0.624, hermetic — writes to tmp)**, latency >1k rows/s, reason-recall ordering |
 | `test_predict.py` | 5 | predict_run / batch / explain / early-window contracts |
-| `test_serve.py` | 6 | `/health` (no model), `/model`, `/predict`, `/predict/whatif`, 422 validation |
-**Result:** **43 passed, 0 skipped** in ~49 s (model-gated tests ran because the artefact is built).
+| `test_serve.py` | 10 | `/health` (+early-window status), `/model`, `/predict`, `/predict/whatif`, unknown-category + missing-aggregate + out-of-range → 422 |
+**Result:** **47 passed, 0 skipped** in ~51 s (model-gated tests ran because the artefact is built).
 **Interpretation:** the suite enforces the project's two riskiest failure modes — data leakage
 and train/serve drift — in code.
 
@@ -70,6 +71,22 @@ input → 422. All via `fastapi.testclient` (no live server needed in tests).
 experiment table (rule 0.48 → LogReg 0.60 → champion 0.62), the **five-angle ceiling** table, the
 frontier-LLM head-to-head, production/serving, and limitations. README updated to Phase 7/7
 complete with the new iteration block.
+
+### 7.5: Codex second-model review — applied in-branch
+The PR's automated Codex (GPT-5.4) review returned 5 findings; **all 5 were valid and applied**
+before the cron triage (this project's established pattern — builder pre-lands, cron verifies):
+| # | Finding | Fix applied |
+|---|---|---|
+| 1 | `/predict` 500s if only `champion.joblib` is present (`early_warning_lead` needs `early_window.joblib`) | `_score` degrades gracefully (`early.available=False`); `/health` now reports `early_window_loaded` |
+| 2 | `RunRecord` accepts an untyped dict → `KeyError`/`TypeError` as 500 on malformed payloads | `as_mapping` validates required aggregate fields + list-typed traces → 422 |
+| 3 | `task_type`/`model_tier` unconstrained → unknown category silently scores as the baseline | `Literal` types on `WhatIfRequest` + explicit category check on raw `/predict` → 422 |
+| 4 | `test_evaluate` calls `ev.main()` which writes `results/phase6_eval.json` (mutates repo, breaks hermetic CI) | `monkeypatch ev.ROOT → tmp_path`; the test no longer touches the repo |
+| 5 | the no-leakage guard only checked `BASE_NUMERIC`, but the champion trains on all 49 features | guard now runs over the full `+ALL` matrix; worst single feature is the engineered `ix_retry_casc` at **AUC 0.755** (< 0.85) — a stronger, more honest test |
+
+Added 4 `test_serve` cases locking the new validation (unknown-category, missing-aggregate,
+early-window health status). Copilot's review was quota-limited (no actionable output), consistent
+with prior phases. Net: suite 43 → 47, all green; the serving layer is robuster and the headline
+leakage guard now covers exactly what the README claims it does.
 
 ## Head-to-Head Comparison (final master table, held-out test, ranked by AUPRC)
 | Rank | Model / config | AUPRC | ROC-AUC | Brier | R@P=0.80 |
@@ -115,7 +132,7 @@ threshold — stated in the model card, the dashboard footer, and now `test_eval
 
 ## Code Changes
 - `tests/test_data_pipeline.py`, `tests/test_utils.py`, `tests/test_evaluate.py`,
-  `tests/test_serve.py` (new) — +29 tests (14 → 43).
+  `tests/test_serve.py` (new) — +33 tests (14 → 47, incl. the §7.5 review-response additions).
 - `src/serve.py` (new) — FastAPI scoring service reusing `src.predict`.
 - `Dockerfile` (new) — containerised service; trains the model into the image.
 - `reports/final_report.md` (new) — consolidated 7-phase research report.

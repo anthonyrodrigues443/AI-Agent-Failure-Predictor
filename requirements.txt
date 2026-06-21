@@ -20,7 +20,7 @@ imbalanced-learn>=0.12   # SMOTE / ADASYN / BorderlineSMOTE / SMOTETomek / Rando
 shap>=0.44
 streamlit>=1.30
 plotly>=5.18            # risk gauge + early-window timeline + SHAP charts in app.py
-pytest>=7.4            # tests/ contract + inference + HTTP suite (43 tests)
+pytest>=7.4            # tests/ contract + inference + HTTP suite (47 tests)
 
 # Phase 7 (serving)
 fastapi>=0.110         # src/serve.py HTTP scoring service

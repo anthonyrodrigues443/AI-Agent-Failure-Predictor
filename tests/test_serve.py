@@ -73,3 +73,29 @@ def test_whatif_validation_rejects_out_of_range():
     # context_max_pct > 1.0 must be rejected by the pydantic schema (422), model or not
     r = client.post("/predict/whatif", json={"context_max_pct": 5.0})
     assert r.status_code == 422
+
+
+def test_health_reports_early_window_status():
+    # a champion-only deployment must be distinguishable from a fully-loaded one
+    body = client.get("/health").json()
+    assert "early_window_loaded" in body
+
+
+def test_whatif_rejects_unknown_category():
+    # unknown task/tier must 422 (else it would silently score as the baseline category)
+    assert client.post("/predict/whatif", json={"task_type": "banana"}).status_code == 422
+    assert client.post("/predict/whatif", json={"model_tier": "XL"}).status_code == 422
+
+
+def test_predict_rejects_missing_aggregates():
+    # traces present but the numeric aggregates the featuriser needs are absent -> 422, not 500
+    run = {"num_steps": 5, "task_type": "code_gen", "model_tier": "mid"}
+    for tc in ["trace_ctx_pct", "trace_tokens", "trace_latency",
+               "trace_err", "trace_retry", "trace_tool", "trace_loop"]:
+        run[tc] = [0.0] * 5
+    assert client.post("/predict", json={"run": run}).status_code == 422
+
+
+def test_predict_rejects_unknown_category_raw():
+    run = {"num_steps": 5, "task_type": "code_gen", "model_tier": "XL"}
+    assert client.post("/predict", json={"run": run}).status_code == 422

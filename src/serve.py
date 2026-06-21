@@ -22,10 +22,22 @@ from typing import Any
 for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
     os.environ.setdefault(_v, "1")
 
+from typing import Literal  # noqa: E402
+
 from fastapi import FastAPI, HTTPException  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from src.feature_engineering import TRACE_COLS, synthesize_run  # noqa: E402
+from src.feature_engineering import (  # noqa: E402
+    TRACE_COLS, TASK_LEVELS, TIER_LEVELS, BASE_NUMERIC, synthesize_run,
+)
+
+# Constrain the categorical inputs to the levels the model actually one-hots — an unknown
+# task/tier would otherwise reindex to the all-zero (baseline) dummy and score silently as
+# `code_gen`/`frontier`. The asserts pin the Literals to the canonical schema so they can't drift.
+TaskType = Literal["code_gen", "data_analysis", "deep_research", "multi_hop_qa", "web_navigation"]
+TierType = Literal["frontier", "mid", "small"]
+assert set(TaskType.__args__) == set(TASK_LEVELS), "TaskType drifted from TASK_LEVELS"
+assert set(TierType.__args__) == set(TIER_LEVELS), "TierType drifted from TIER_LEVELS"
 
 app = FastAPI(
     title="AI-Agent Failure Predictor",
@@ -42,8 +54,8 @@ class WhatIfRequest(BaseModel):
     """Interpretable sliders — the trace is synthesised deterministically (a labelled
     hypothetical, not sampled telemetry)."""
     num_steps: int = Field(10, ge=3, le=45)
-    task_type: str = Field("deep_research")
-    model_tier: str = Field("small")
+    task_type: TaskType = Field("deep_research")
+    model_tier: TierType = Field("small")
     tool_error_rate: float = Field(0.4, ge=0.0, le=1.0)
     max_consecutive_retries: int = Field(2, ge=0, le=10)
     context_max_pct: float = Field(0.6, ge=0.0, le=1.0)
@@ -59,12 +71,23 @@ class RunRecord(BaseModel):
 
     def as_mapping(self) -> dict[str, Any]:
         run = dict(self.run)
+        if "num_steps" not in run:
+            raise HTTPException(422, "run is missing 'num_steps'")
+        # All the aggregate numeric fields the featuriser reads, plus the two categoricals,
+        # must be present — otherwise build_base() raises a KeyError as a 500. Validate to 422.
+        missing_agg = [c for c in BASE_NUMERIC + ["task_type", "model_tier"] if c not in run]
+        if missing_agg:
+            raise HTTPException(422, f"run is missing aggregate fields: {missing_agg}")
+        for key, levels in (("task_type", TASK_LEVELS), ("model_tier", TIER_LEVELS)):
+            if run[key] not in levels:
+                raise HTTPException(422, f"unknown {key}: {run[key]!r} (allowed: {levels})")
         missing = [tc for tc in TRACE_COLS if tc not in run]
         if missing:
             raise HTTPException(422, f"run is missing per-step traces: {missing}")
-        if "num_steps" not in run:
-            raise HTTPException(422, "run is missing 'num_steps'")
-        bad = [tc for tc in TRACE_COLS if len(run[tc]) != run["num_steps"]]
+        try:
+            bad = [tc for tc in TRACE_COLS if len(run[tc]) != run["num_steps"]]
+        except TypeError:
+            raise HTTPException(422, "per-step traces must be lists")
         if bad:
             raise HTTPException(422, f"trace length != num_steps for: {bad}")
         return run
@@ -93,19 +116,26 @@ def _champion():
 def _score(run: dict) -> Prediction:
     from src.predict import predict_run, explain_run, early_warning_lead
     champ = _champion()
-    out = predict_run(run, champ)
-    exp = explain_run(run, champ, top_n=5)
+    try:
+        out = predict_run(run, champ)
+        exp = explain_run(run, champ, top_n=5)
+    except (KeyError, ValueError, TypeError) as e:  # malformed run reaching the featuriser
+        raise HTTPException(422, f"could not featurise run: {e}")
     factors = (
         [{"group": g["group"], "shap": round(g["shap"], 4)} for g in exp["groups"][:4]]
         if exp.get("available") else []
     )
-    lead = early_warning_lead(run, alert_prob=0.5)
-    early = {
-        "alerted": lead["alerted"],
-        "alert_step": lead.get("alert_step"),
-        "steps_early": lead.get("steps_early"),
-        "n_steps": lead.get("n_steps"),
-    }
+    # Early-warning needs the companion artefact; degrade gracefully if it's absent rather
+    # than 500 (the champion-only deployment still returns a valid full-run prediction).
+    early: dict[str, Any] = {"available": False, "alerted": False, "alert_step": None,
+                             "steps_early": None, "n_steps": int(run.get("num_steps", 0))}
+    try:
+        lead = early_warning_lead(run, alert_prob=0.5)
+        early = {"available": True, "alerted": lead["alerted"],
+                 "alert_step": lead.get("alert_step"), "steps_early": lead.get("steps_early"),
+                 "n_steps": lead.get("n_steps")}
+    except FileNotFoundError:
+        pass
     return Prediction(
         failure_probability=round(out["failure_probability"], 4),
         predicted_failure=out["predicted_failure"],
@@ -121,10 +151,11 @@ def _score(run: dict) -> Prediction:
 # ---------------------------------------------------------------------------------------
 @app.get("/health")
 def health() -> dict:
-    loaded = os.path.exists(
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                     "models", "champion.joblib"))
-    return {"status": "ok", "model_loaded": loaded, "service": "agent-failure-predictor"}
+    models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+    champ_loaded = os.path.exists(os.path.join(models_dir, "champion.joblib"))
+    ew_loaded = os.path.exists(os.path.join(models_dir, "early_window.joblib"))
+    return {"status": "ok", "model_loaded": champ_loaded, "early_window_loaded": ew_loaded,
+            "service": "agent-failure-predictor"}
 
 
 @app.get("/model")
