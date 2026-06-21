@@ -20,4 +20,9 @@ imbalanced-learn>=0.12   # SMOTE / ADASYN / BorderlineSMOTE / SMOTETomek / Rando
 shap>=0.44
 streamlit>=1.30
 plotly>=5.18            # risk gauge + early-window timeline + SHAP charts in app.py
-pytest>=7.4            # tests/ contract + inference suite
+pytest>=7.4            # tests/ contract + inference + HTTP suite (47 tests)
+
+# Phase 7 (serving)
+fastapi>=0.110         # src/serve.py HTTP scoring service
+uvicorn>=0.27          # ASGI server for the FastAPI app / Docker entrypoint
+httpx>=0.27            # fastapi.testclient dependency (tests/test_serve.py)
